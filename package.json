@@ -1,0 +1,25 @@
+{
+  "name": "flight-info-server",
+  "version": "1.0.0",
+  "description": "This is an implementation of a web server that provides information on inbound and outbound flights from TLV airport. The server is dockerized.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LeeadJ/Flight-info-server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/LeeadJ/Flight-info-server/issues"
+  },
+  "homepage": "https://github.com/LeeadJ/Flight-info-server#readme",
+  "dependencies": {
+    "axios": "^1.7.4",
+    "express": "^4.19.2",
+    "nodemon": "^3.1.4"
+  }
+}
