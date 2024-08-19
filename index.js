@@ -174,7 +174,57 @@ const isDelayed = (estimatedTime, realTime) => {
     return false;
 }
 
+// BONUS returns options for quick-getaway
+app.get('/flights/quick-getaway', async (req, res) => {
+    try {
+        const flights = await fetchFlightData();
+        let departureFlight, arrivalFlight;
 
+        // filtered arrays of outbound and inbound flights with data object for RT departure
+        const outBoundFlights = flights.filter(flight => flight.CHRMINE === 'DEPARTED').map(flight => (
+            {
+                ...flight,
+                departureDate: new Date(flight.CHPTOL)
+                
+            }
+        ))
+        const inBoundFlights = flights.filter(flight => flight.CHRMINE === 'LANDED').map(flight => (
+            {
+                ...flight,
+                departureDate: new Date(flight.CHPTOL)
+                
+            }
+        ))
+
+        // sorted arrays by RT departure (ascending)
+        outBoundFlights.sort((a,b) => a.departureDate - b.departureDate);
+        inBoundFlights.sort((a,b) => a.departureDate - b.departureDate);
+
+        for(outFlight of outBoundFlights){
+            for(inFlight of inBoundFlights){
+                if(outFlight.departureDate < inFlight.departureDate){
+                    departureFlight = outFlight;
+                    arrivalFlight = inFlight;
+                    break;
+                }
+            }
+            if(departureFlight && arrivalFlight) break; // found a pair
+        }
+
+        if(departureFlight && arrivalFlight){
+            res.json({
+                departure: departureFlight.CHOPER + departureFlight.CHFLTN,
+                arrival: arrivalFlight.CHOPER + arrivalFlight.CHFLTN
+            })
+        }
+        else {
+            res.json({});
+        }
+        
+    } catch(error){
+        res.status(500).json({error: 'Failed to fetch flight data'})
+    }
+})
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
 
 /*
