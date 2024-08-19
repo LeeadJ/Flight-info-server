@@ -1,12 +1,10 @@
-const express = require('express');
-const axios = require('axios');
 
-const app = express();
-const PORT = 8080;
-const BASE_URL = 'https://data.gov.il/api/3/action/datastore_search?resource_id=e83f763b-b7d7-479e-b172-ae981ddc6de5&limit=300';
+const express = require('express')
+const { fetchFlightData, isDelayed } = require('./utils')
+const router = express.Router();
 
-// Fetching the base url
-app.get('/', async (req, res) => {
+// 1. Get the Base Url
+router.get('/', async (req, res) => {
     try{
         const result = await fetchFlightData();
         res.send(result)
@@ -16,11 +14,12 @@ app.get('/', async (req, res) => {
     }
 })
 
-// Number of flights
-app.get('/flights/count', async (req, res) => {
+// 2. Get Total Number of Flights (Inbound & Outbound)
+router.get('/flights/count', async (req, res) => {
     try {
         const flights = await fetchFlightData();
-        res.json(flights.length);
+
+        res.json({count: flights.length});
 
     } catch (error){
         res.status(500).json({error: 'Failed to fetch flight data'})
@@ -28,23 +27,23 @@ app.get('/flights/count', async (req, res) => {
     
 })
 
-// Number of Inbound flights
-app.get('/flights/inbound/count', async (req, res) => {
+// 3. Get Number of Inbound Flights
+router.get('/flights/inbound/count', async (req, res) => {
     try {
         const flights = await fetchFlightData();
         const inboundCount = flights.reduce((total, flight) => {
             return flight.CHRMINE === 'LANDED' ? total + 1 : total;
         }, 0);
 
-        res.json(inboundCount);
+        res.json({count: inboundCount});
 
     } catch (error){
         res.status(500).json({error: 'Failed to fetch flight data'})
     }
 })
 
-// Number of Outbound flights
-app.get('/flights/outbound/count', async (req, res) => {
+// 4. Get Number of Outbound Flights
+router.get('/flights/outbound/count', async (req, res) => {
     try {
         const flights = await fetchFlightData();
         const outboundCount = flights.reduce((total, flight) => {
@@ -52,15 +51,15 @@ app.get('/flights/outbound/count', async (req, res) => {
 
         }, 0);
 
-        res.json(outboundCount);
+        res.json({count: outboundCount});
 
     } catch (error){
         res.status(500).json({error: 'Failed to fetch flight data'})
     }
 })
 
-// Number of flights from a given country
-app.get('/flights/count/:country', async (req, res) => {
+// 5. Get Number of Flights from a Specific Country
+router.get('/flights/count/:country', async (req, res) => {
     try {
         const flights = await fetchFlightData();
         const country = req.params.country.toLowerCase();
@@ -68,14 +67,14 @@ app.get('/flights/count/:country', async (req, res) => {
             return flight.CHLOCCT.toLowerCase() === country ? total + 1 : total
         }, 0)
 
-        res.json(flightCount)
+        res.json({count: flightCount})
 
     } catch(error){
         res.status(500).json({error: 'Failed to fetch flight data'})
     }
 })
-// Number of outbound flights from a given country
-app.get('/flights/outbound/count/:country', async (req, res) => {
+// 6. Get Number of Outbound Flights from a Specific Country
+router.get('/flights/outbound/count/:country', async (req, res) => {
     try {
         const flights = await fetchFlightData();
         const country = req.params.country.toLowerCase();
@@ -83,15 +82,15 @@ app.get('/flights/outbound/count/:country', async (req, res) => {
             return (flight.CHLOCCT.toLowerCase() === country && flight.CHRMINE === 'DEPARTED') ? total + 1 : total;
         }, 0)
 
-        res.json(outboundCount)
+        res.json({count: outboundCount})
 
     } catch(error){
         res.status(500).json({error: 'Failed to fetch flight data'})
     }
 })
 
-// Number of inbound flights from a given country
-app.get('/flights/inbound/count/:country', async (req, res) => {
+// 7. Get Number of Inbound Flights from a Specific Country
+router.get('/flights/inbound/count/:country', async (req, res) => {
     try {
         const flights = await fetchFlightData();
         const country = req.params.country.toLowerCase();
@@ -99,42 +98,43 @@ app.get('/flights/inbound/count/:country', async (req, res) => {
             return (flight.CHLOCCT.toLowerCase() === country && flight.CHRMINE === 'LANDED') ? total + 1 : total;
         }, 0)
 
-        res.json(inboundCount)
+        res.json({count: inboundCount})
 
     } catch(error){
         res.status(500).json({error: 'Failed to fetch flight data'})
     }
 })
 
-//Number of delayed flights
-app.get('/flights/delayed/count', async (req, res) => {
+// 8. Get Number of Delayed Flights
+router.get('/flights/delayed/count', async (req, res) => {
     try {
         const flights = await fetchFlightData();
+        // isDelayed returns true if the real departure time is 10 minute or greater than the etimated departue time.
         const delayedCount = flights.reduce((total, flight) => {
             return isDelayed(flight.CHSTOL, flight.CHPTOL) ? total + 1 : total
         }, 0)
 
-        res.json(delayedCount
+        res.json({count: delayedCount})
 
-        )
     } catch(error){
         res.status(500).json({error: 'Failed to fetch flight data'})
     }
 })
 
-// Most popular fl  ight
-app.get('/flights/most-popular', async (req, res) => {
+// 9. Get Most Popular Destination (City)
+router.get('/flights/most-popular', async (req, res) => {
     try {
         const flights = await fetchFlightData();
-
+        // map stores city name as key and amount or occurrences as value.
         const map = new Map();
         let max = 0;
         let mostPopularDest;
+
         flights.forEach(flight => {
-            // filter outbound flights
+            // only outbound flights are relevent
             if(flight.CHRMINE === 'DEPARTED'){
                 const country = flight.CHLOC1T.toLowerCase();
-                if(!map.has(country)){
+                if(!map.has(country)){ // first occurence of country
                     map.set(country, 1);
                 }
                 else {
@@ -148,39 +148,20 @@ app.get('/flights/most-popular', async (req, res) => {
             }
         })
 
-        res.json(mostPopularDest)
+        res.json({city: mostPopularDest})
+
     } catch(error){
         res.status(500).json({error: 'Failed to fetch flight data'})
     }
 })
 
-// returns flight data => [{},{},{}...]
-const fetchFlightData = async () => {
-    const response = await axios.get(BASE_URL);
-    return response.data.result.records;
-}
-
-// returns true if a flight departs 10 or more min after the estimated time:
-const isDelayed = (estimatedTime, realTime) => {
-    const estDate = new Date(estimatedTime);
-    const realDate = new Date(realTime);
-
-    if(realDate > estDate){
-        const diffInMs = realDate - estDate;
-        const diffInMin = diffInMs / (1000 * 60);
-        return diffInMin >= 10;
-    }
-
-    return false;
-}
-
-// BONUS returns options for quick-getaway
-app.get('/flights/quick-getaway', async (req, res) => {
+// 10. Get a Quick Getaway Suggestion (BONUS)
+router.get('/flights/quick-getaway', async (req, res) => {
     try {
         const flights = await fetchFlightData();
         let departureFlight, arrivalFlight;
 
-        // filtered arrays of outbound and inbound flights with data object for RT departure
+        // separated arrays for outbound and inbound flights. Added data object as departureDate for later calculations
         const outBoundFlights = flights.filter(flight => flight.CHRMINE === 'DEPARTED').map(flight => (
             {
                 ...flight,
@@ -196,10 +177,11 @@ app.get('/flights/quick-getaway', async (req, res) => {
             }
         ))
 
-        // sorted arrays by RT departure (ascending)
+        // sorted arrays by departureDate (ascending)
         outBoundFlights.sort((a,b) => a.departureDate - b.departureDate);
         inBoundFlights.sort((a,b) => a.departureDate - b.departureDate);
 
+        // find first occurence where outbound departure time is less than inbound departure time.
         for(outFlight of outBoundFlights){
             for(inFlight of inBoundFlights){
                 if(outFlight.departureDate < inFlight.departureDate){
@@ -218,38 +200,19 @@ app.get('/flights/quick-getaway', async (req, res) => {
             })
         }
         else {
-            res.json({});
+            res.json({
+                departure: 'Does Not Exist',
+                arrival: 'Does Not Exist'
+            });
         }
         
     } catch(error){
         res.status(500).json({error: 'Failed to fetch flight data'})
     }
 })
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
 
-/*
-try {
-
-} catch(error){
-    res.status(500).json({error: 'Failed to fetch flight data'})
-}
-*/
+module.exports = router;
 
 
-// fetchFlightData().then(result => {
-//     const times = result.map(flight => {
-//         return {
-//             EST: flight.CHSTOL, 
-//             REAL: flight.CHPTOL,
-//         }
-//     })
-//     const delayed = times.filter(time => {
-//         return isDelayed(time.EST, time.REAL)
-//     })
-//     console.log({Count:delayed.length, Delayed: delayed})
-//     const onTime = times.filter(time => {
-//         return !isDelayed(time.EST, time.REAL)
-//     })
-//     console.log({Count:onTime.length, OnTime: onTime})
 
-// })
+
