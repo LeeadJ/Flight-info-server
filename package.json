@@ -4,7 +4,8 @@
   "description": "This is an implementation of a web server that provides information on inbound and outbound flights from TLV airport. The server is dockerized.",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js"
   },
   "repository": {
     "type": "git",
